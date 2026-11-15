@@ -63,12 +63,40 @@ public class GoalControllerTests
     }
 
     [Fact]
-    public async void GetForUser()
+    public async Task GetForUser()
     {
         // Arrange
-        
+        var goals = collections.GetGoals();
+        var users = collections.GetUsers();
+
+        // The fake goals ship without an owner, which would make the UserId
+        // assertion compare null with null. Give them a real owner first.
+        var userId = "62a29c15f4605c4c9fa7f306";
+        foreach (Goal g in goals)
+        {
+            g.UserId = userId;
+        }
+
+        IGoalsService goalsService = new FakeGoalsService(goals, goals[0]);
+        IUsersService usersService = new FakeUsersService(users, users[0]);
+        GoalController controller = new(goalsService, usersService);
+
         // Act
-        
+        var httpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        controller.ControllerContext.HttpContext = httpContext;
+        var result = await controller.GetForUser(goals[0].UserId!);
+
         // Assert
+        Assert.NotNull(result);
+        Assert.Equal(goals.Count, result!.Count);
+
+        var index = 0;
+        foreach (Goal goal in result!)
+        {
+            Assert.IsAssignableFrom<Goal>(goal);
+            Assert.Equal(userId, goal.UserId);
+            Assert.Equal(goals[index].Id, goal.Id);
+            index++;
+        }
     }
 }
